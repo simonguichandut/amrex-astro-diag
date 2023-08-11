@@ -28,7 +28,6 @@ int main(int argc, char* argv[])
     // initialize the runtime parameters
 
     init_extern_parameters();
-    std::cout << "plotfile = " << diag_rp::plotfile << std::endl;
 
     // initialize C++ Microphysics
 
@@ -92,7 +91,6 @@ int main(int argc, char* argv[])
                                   std::find(var_names_pf.cbegin(), var_names_pf.cend(), "Temp"));
 
     std::string first_spec_name = "X(" + short_spec_names_cxx[0] + ")";
-    std::cout << first_spec_name << std::endl;
     idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), first_spec_name);
     if (idx == var_names_pf.cend()) {
         amrex::Error("Error: could not find the first species");
