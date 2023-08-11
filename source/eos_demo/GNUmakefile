@@ -24,7 +24,7 @@ EBASE := eosdemo
 # EOS and network
 EOS_DIR := helmholtz
 
-NETWORK_DIR := subch
+NETWORK_DIR := aprox13
 #NETWORK_INPUTS := triple_alpha_plus_o.net
 
 Bpack := ./Make.package
