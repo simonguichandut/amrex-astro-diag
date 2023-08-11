@@ -1,9 +1,16 @@
+#ifndef AMREX_ASTRO_UTIL_H
+#define AMREX_ASTRO_UTIL_H
+
 #include <iostream>
 #include <regex>
 #include <string>
 
+#include <AMReX.H>
 #include <AMReX_REAL.H>
 #include <AMReX_Print.H>
+#include <AMReX_Vector.H>
+
+using namespace amrex;
 
 ///
 /// Gets the variable ``varname`` from the ``job_info`` file and returns as a
@@ -129,3 +136,4 @@ std::pair<Real, Real> get_coord_info(const Array<Real, AMREX_SPACEDIM>& p,
     return {r_zone, vol};
 
 }
+#endif
