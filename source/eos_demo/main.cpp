@@ -20,22 +20,15 @@
 using namespace amrex;
 
 
-//
-// Prototypes
-//
-void GetInputArgs (const int argc, char** argv, std::string& pltfile);
-
-void PrintHelp ();
-
-
 int main(int argc, char* argv[])
 {
 
-    amrex::Initialize(argc, argv, false);
+    amrex::Initialize(argc, argv);
 
     // initialize the runtime parameters
 
     init_extern_parameters();
+    std::cout << "plotfile = " << diag_rp::plotfile << std::endl;
 
     // initialize C++ Microphysics
 
@@ -46,19 +39,13 @@ int main(int argc, char* argv[])
 
     BL_PROFILE_VAR("main()", pmain);
 
-    // Input arguments
-
-    std::string pltfile;
-
-    GetInputArgs (argc, argv, pltfile);
-
     // get the center of the domain -- this is useful if we are binning
 
-    auto center = GetCenter(pltfile);
+    auto center = GetCenter(diag_rp::plotfile);
 
     // read the plotfile metadata
 
-    PlotFileData pf(pltfile);
+    PlotFileData pf(diag_rp::plotfile);
 
     int fine_level = pf.finestLevel();
     const int dim = pf.spaceDim();
@@ -213,50 +200,3 @@ int main(int argc, char* argv[])
     amrex::Finalize();
 }
 
-//
-// Parse command line arguments
-//
-void GetInputArgs ( const int argc, char** argv,
-                    std::string& pltfile)
-{
-
-    int i = 1; // skip program name
-
-    while ( i < argc)
-    {
-
-        if ( !strcmp(argv[i], "-p") || !strcmp(argv[i],"--pltfile") )
-        {
-            pltfile = argv[++i];
-        }
-        else
-        {
-            std::cout << "\n\nOption " << argv[i] << " not recognized" << std::endl;
-            PrintHelp ();
-            exit ( EXIT_FAILURE );
-        }
-
-        // Go to the next parameter name
-        ++i;
-    }
-
-    if (pltfile.empty()) {
-        PrintHelp();
-        Abort("Missing input file");
-    }
-
-
-    Print() << "\nplotfile  = \"" << pltfile << "\"" << std::endl;
-    Print() << std::endl;
-}
-
-//
-// Print usage info
-//
-void PrintHelp ()
-{
-    Print() << "\nusage: executable_name args"
-            << "\nargs [-p|--pltfile]     plotfile : plot file directory (required)"
-            << "\n\n" << std::endl;
-
-}
