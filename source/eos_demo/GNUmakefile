@@ -19,7 +19,7 @@ MAX_ZONES := 16384
 DEFINES += -DNPTS_MODEL=$(MAX_ZONES)
 
 # programs to be compiled
-EBASE := initialmodel
+EBASE := eosdemo
 
 # EOS and network
 EOS_DIR := helmholtz

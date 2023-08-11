@@ -23,9 +23,7 @@ using namespace amrex;
 //
 // Prototypes
 //
-void GetInputArgs (const int argc, char** argv,
-                   std::string& pltfile, std::string& slcfile,
-                   bool& sphr);
+void GetInputArgs (const int argc, char** argv, std::string& pltfile);
 
 void PrintHelp ();
 
@@ -41,7 +39,7 @@ int main(int argc, char* argv[])
 
     // initialize C++ Microphysics
 
-    eos_init(problem_rp::small_temp, problem_rp::small_dens);
+    eos_init(diag_rp::small_temp, diag_rp::small_dens);
     network_init();
 
     // timer for profiling
@@ -50,10 +48,9 @@ int main(int argc, char* argv[])
 
     // Input arguments
 
-    std::string pltfile, slcfile;
-    bool sphr = false;
+    std::string pltfile;
 
-    GetInputArgs (argc, argv, pltfile, slcfile, sphr);
+    GetInputArgs (argc, argv, pltfile);
 
     // get the center of the domain -- this is useful if we are binning
 
@@ -144,8 +141,6 @@ int main(int argc, char* argv[])
                                                     problo[1]+static_cast<Real>(j+0.5)*dx_level[1],
                                                     problo[2]+static_cast<Real>(k+0.5)*dx_level[2])};
 
-
-
                                 eos_t eos_state;
 
                                 eos_state.rho = fab(i,j,k,dens_comp);
@@ -154,6 +149,7 @@ int main(int argc, char* argv[])
                                     eos_state.xn[n] = fab(i,j,k,spec_comp+n);
                                 }
 
+                                eos(eos_input_rt, eos_state);
 
                                 // } // mask
 
@@ -186,8 +182,6 @@ int main(int argc, char* argv[])
                                                     problo[1]+static_cast<Real>(j+0.5)*dx_level[1],
                                                     problo[2]+static_cast<Real>(k+0.5)*dx_level[2])};
 
-
-
                                 eos_t eos_state;
 
                                 eos_state.rho = fab(i,j,k,dens_comp);
@@ -195,6 +189,8 @@ int main(int argc, char* argv[])
                                 for (int n = 0; n < NumSpec; ++n) {
                                     eos_state.xn[n] = fab(i,j,k,spec_comp+n);
                                 }
+
+                                eos(eos_input_rt, eos_state);
 
                             }
                         }
@@ -221,8 +217,7 @@ int main(int argc, char* argv[])
 // Parse command line arguments
 //
 void GetInputArgs ( const int argc, char** argv,
-                    std::string& pltfile, std::string& slcfile,
-                    bool &sphr)
+                    std::string& pltfile)
 {
 
     int i = 1; // skip program name
@@ -233,14 +228,6 @@ void GetInputArgs ( const int argc, char** argv,
         if ( !strcmp(argv[i], "-p") || !strcmp(argv[i],"--pltfile") )
         {
             pltfile = argv[++i];
-        }
-        else if ( !strcmp(argv[i], "-s") || !strcmp(argv[i],"--slicefile") )
-        {
-            slcfile = argv[++i];
-        }
-        else if ( !strcmp(argv[i],"--sphr") )
-        {
-            sphr = true;
         }
         else
         {
@@ -253,24 +240,13 @@ void GetInputArgs ( const int argc, char** argv,
         ++i;
     }
 
-    if (pltfile.empty() && slcfile.empty())
-    {
+    if (pltfile.empty()) {
         PrintHelp();
         Abort("Missing input file");
     }
 
-#if (AMREX_SPACEDIM == 1)
-    Print() << "Extracting slice from 1d problem" << std::endl;
-#elif (AMREX_SPACEDIM >= 2)
-    if (sphr) {
-        Print() << "Extracting slice from " << AMREX_SPACEDIM << "d spherical problem" << std::endl;
-    } else {
-        Print() << "Extracting slice from " << AMREX_SPACEDIM << "d cylindrical problem" << std::endl;
-    }
-#endif
 
     Print() << "\nplotfile  = \"" << pltfile << "\"" << std::endl;
-    Print() << "slicefile = \"" << slcfile << "\"" << std::endl;
     Print() << std::endl;
 }
 
@@ -281,10 +257,6 @@ void PrintHelp ()
 {
     Print() << "\nusage: executable_name args"
             << "\nargs [-p|--pltfile]     plotfile : plot file directory (required)"
-            << "\n     [-s|--slicefile] slice file : slice file          (required)"
-#if AMREX_SPACEDIM >= 2
-            << "\n     [--sphr]          spherical : spherical problem"
-#endif
             << "\n\n" << std::endl;
 
 }

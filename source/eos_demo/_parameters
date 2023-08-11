@@ -1,4 +1,4 @@
-@namespace: problem
+@namespace: diag
 
 small_temp     real         -1.e200
 small_dens     real         -1.e200
