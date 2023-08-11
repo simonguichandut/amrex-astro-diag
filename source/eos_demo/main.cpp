@@ -97,6 +97,18 @@ int main(int argc, char* argv[])
     }
     int spec_comp = std::distance(var_names_pf.cbegin(), idx);
 
+    // safety check -- make sure the species in the plotfile are identical to
+    // those defined in the network we built this tool with.
+
+    for (int n = 0; n < NumSpec; ++n) {
+        std::string current_spec_name = "X(" + short_spec_names_cxx[n] + ")";
+        if (current_spec_name != var_names_pf[spec_comp+n]) {
+            std::cout << current_spec_name << std::endl;
+            std::cout << var_names_pf[spec_comp+n] << std::endl;
+            amrex::Error("Error: species don't match");
+        }
+    }
+
     // we will use a mask that tells us if a zone on the current level
     // is covered by data on a finer level.
 
