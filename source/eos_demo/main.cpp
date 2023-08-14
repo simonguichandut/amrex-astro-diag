@@ -87,8 +87,7 @@ int main(int argc, char* argv[])
             amrex::Error("Error: could not find the temperature component");
         }
     }
-    int temp_comp = std::distance(var_names_pf.cbegin(),
-                                  std::find(var_names_pf.cbegin(), var_names_pf.cend(), "Temp"));
+    int temp_comp = std::distance(var_names_pf.cbegin(), idx);
 
     std::string first_spec_name = "X(" + short_spec_names_cxx[0] + ")";
     idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), first_spec_name);
