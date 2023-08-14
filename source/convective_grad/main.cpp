@@ -223,24 +223,53 @@ void main_main()
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
 
+                // first dlog T / dlog P actual -- we assume that the last
+                // dimension is the vertical (plane-parallel)
+
                 if (ndims == 1) {
                     // x is the vertical
-                    ga(i,j,k,0) = (T(i+1,j,k) - T(i-1,j,k)) /
-                                  (P(i+1,j,k) - P(i-1,j,k)) *
-                                  (P(i,j,k) / T(i,j,k));
+                    Real dp = P(i+1,j,k) - P(i-1,j,k);
+                    if (dp != 0.0) {
+                        ga(i,j,k,0) = (T(i+1,j,k) - T(i-1,j,k)) / dp * (P(i,j,k) / T(i,j,k));
+                    } else {
+                        ga(i,j,k,0) = 0.0;
+                    }
 
                 } else if (ndims == 2) {
                     // y is the vertical
-                    ga(i,j,k,0) = (T(i,j+1,k) - T(i,j-1,k)) /
-                                  (P(i,j+1,k) - P(i,j-1,k)) *
-                                  (P(i,j,k) / T(i,j,k));
+                    Real dp = P(i,j+1,k) - P(i,j-1,k);
+                    if (dp != 0.0) {
+                        ga(i,j,k,0) = (T(i,j+1,k) - T(i,j-1,k)) / dp * (P(i,j,k) / T(i,j,k));
+                    } else {
+                        ga(i,j,k,0) = 0.0;
+                    }
 
                 } else {
                     // z is the vertical
-                    ga(i,j,k,0) = (T(i,j,k+1) - T(i,j,k-1)) /
-                                  (P(i,j,k+1) - P(i,j,k-1)) *
-                                  (P(i,j,k) / T(i,j,k));
+                    Real dp = P(i,j,k+1) - P(i,j,k-1);
+                    if (dp != 0.0) {
+                        ga(i,j,k,0) = (T(i,j,k+1) - T(i,j,k-1)) / dp * (P(i,j,k) / T(i,j,k));
+                    } else {
+                        ga(i,j,k,0) = 0.0;
+                    }
                 }
+
+                // now del_ad.  We'll follow HKT Eq. 3.96, 3.97
+
+                eos_t eos_state;
+
+                eos_state.rho = fab(i,j,k,dens_comp);
+                eos_state.T = fab(i,j,k,temp_comp);
+                for (int n = 0; n < NumSpec; ++n) {
+                    eos_state.xn[n] = fab(i,j,k,spec_comp+n);
+                }
+                eos(eos_input_rt, eos_state);
+
+                Real chi_T = eos_state.dpdT * eos_state.T / eos_state.p;
+
+                ga(i,j,k,1) = eos_state.p * chi_T / (eos_state.gam1 * eos_state.rho * eos_state.T * eos_state.cv);
+
+
             });
         }
     }
