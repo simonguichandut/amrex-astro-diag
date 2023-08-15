@@ -10,6 +10,8 @@
 #include <AMReX_Print.H>
 #include <AMReX_Vector.H>
 
+#include <network.H>
+
 using namespace amrex;
 
 ///
@@ -136,4 +138,91 @@ std::pair<Real, Real> get_coord_info(const Array<Real, AMREX_SPACEDIM>& p,
     return {r_zone, vol};
 
 }
+
+
+///
+/// return the index of the density variable by searching through
+/// the list of variables in the plotfile.
+///
+inline int
+get_dens_index(const std::vector<std::string>& var_names_pf) {
+
+    auto idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), "density");
+    if (idx == var_names_pf.cend()) {
+        // MAESTROeX uses "rho"
+        idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), "rho");
+        if (idx == var_names_pf.cend()) {
+            amrex::Error("Error: could not find the density component");
+        }
+    }
+    return std::distance(var_names_pf.cbegin(), idx);
+}
+
+///
+/// return the index of the temperature variable by searching through
+/// the list of variables in the plotfile.
+///
+inline int
+get_temp_index(const std::vector<std::string>& var_names_pf) {
+
+    auto idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), "Temp");
+    if (idx == var_names_pf.cend()) {
+        // for MAESTROeX, we'll default to "tfromp"
+        idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), "tfromp");
+        if (idx == var_names_pf.cend()) {
+            amrex::Error("Error: could not find the temperature component");
+        }
+    }
+    return std::distance(var_names_pf.cbegin(), idx);
+}
+
+///
+/// return the index of the pressure variable by searching through
+/// the list of variables in the plotfile.
+///
+inline int
+get_pres_index(const std::vector<std::string>& var_names_pf) {
+
+    auto idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), "pressure");
+    if (idx == var_names_pf.cend()) {
+        // for MAESTROeX, we'll default to "p0"
+        idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), "p0");
+        if (idx == var_names_pf.cend()) {
+            amrex::Error("Error: could not find the pressure component");
+        }
+    }
+    return std::distance(var_names_pf.cbegin(), idx);
+}
+
+
+///
+/// return the index of the first species component by searching through
+/// the list of variables in the plotfile.
+///
+inline int
+get_spec_index(const std::vector<std::string>& var_names_pf) {
+
+    std::string first_spec_name = "X(" + short_spec_names_cxx[0] + ")";
+    auto idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), first_spec_name);
+    if (idx == var_names_pf.cend()) {
+        amrex::Error("Error: could not find the first species");
+    }
+    int spec_comp = std::distance(var_names_pf.cbegin(), idx);
+
+    // safety check -- make sure the species in the plotfile are identical to
+    // those defined in the network we built this tool with.
+
+    for (int n = 0; n < NumSpec; ++n) {
+        std::string current_spec_name = "X(" + short_spec_names_cxx[n] + ")";
+        if (current_spec_name != var_names_pf[spec_comp+n]) {
+            std::cout << current_spec_name << std::endl;
+            std::cout << var_names_pf[spec_comp+n] << std::endl;
+            amrex::Error("Error: species don't match");
+        }
+    }
+    return spec_comp;
+}
+
 #endif
+
+

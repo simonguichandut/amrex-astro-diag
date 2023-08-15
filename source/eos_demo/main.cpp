@@ -69,44 +69,9 @@ int main(int argc, char* argv[])
 
     const Vector<std::string>& var_names_pf = pf.varNames();
 
-    auto idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), "density");
-    if (idx == var_names_pf.cend()) {
-        // MAESTROeX uses "rho"
-        idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), "rho");
-        if (idx == var_names_pf.cend()) {
-            amrex::Error("Error: could not find the density component");
-        }
-    }
-    int dens_comp = std::distance(var_names_pf.cbegin(), idx);
-
-    idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), "Temp");
-    if (idx == var_names_pf.cend()) {
-        // for MAESTROeX, we'll default to "tfromp"
-        idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), "tfromp");
-        if (idx == var_names_pf.cend()) {
-            amrex::Error("Error: could not find the temperature component");
-        }
-    }
-    int temp_comp = std::distance(var_names_pf.cbegin(), idx);
-
-    std::string first_spec_name = "X(" + short_spec_names_cxx[0] + ")";
-    idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), first_spec_name);
-    if (idx == var_names_pf.cend()) {
-        amrex::Error("Error: could not find the first species");
-    }
-    int spec_comp = std::distance(var_names_pf.cbegin(), idx);
-
-    // safety check -- make sure the species in the plotfile are identical to
-    // those defined in the network we built this tool with.
-
-    for (int n = 0; n < NumSpec; ++n) {
-        std::string current_spec_name = "X(" + short_spec_names_cxx[n] + ")";
-        if (current_spec_name != var_names_pf[spec_comp+n]) {
-            std::cout << current_spec_name << std::endl;
-            std::cout << var_names_pf[spec_comp+n] << std::endl;
-            amrex::Error("Error: species don't match");
-        }
-    }
+    int dens_comp = get_dens_index(var_names_pf);
+    int temp_comp = get_temp_index(var_names_pf);
+    int spec_comp = get_spec_index(var_names_pf);
 
     // we will use a mask that tells us if a zone on the current level
     // is covered by data on a finer level.
