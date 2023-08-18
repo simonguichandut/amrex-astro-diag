@@ -38,10 +38,6 @@ int main(int argc, char* argv[])
 
     BL_PROFILE_VAR("main()", pmain);
 
-    // get the center of the domain -- this is useful if we are binning
-
-    auto center = GetCenter(diag_rp::plotfile);
-
     // read the plotfile metadata
 
     PlotFileData pf(diag_rp::plotfile);
