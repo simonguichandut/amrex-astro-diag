@@ -65,6 +65,7 @@ void main_main()
     Vector<std::string> gvarnames;
     gvarnames.push_back("del");
     gvarnames.push_back("del_ad");
+    gvarnames.push_back("del_ledoux");
 
     // interpret the boundary conditions
 
@@ -227,6 +228,39 @@ void main_main()
 
                 ga(i,j,k,1) = eos_state.p * chi_T / (eos_state.gam1 * eos_state.rho * eos_state.T * eos_state.cv);
 
+
+                // del_ledoux = del_ad + B, where B is the composition term
+                // We calculate it like MESA, Paxton+ 2013 Equation 8
+
+                Real lnP1 = log(P(i,j,k)); // true pressure at this grid point
+                Real lnP2 = 0.0; // true pressure at the next grid point
+
+                if (ndims == 1) {
+                    // x is the vertical
+                    lnP2 = log(P(i+1,j,k)); 
+                    for (int n = 0; n < NumSpec; ++n) {
+                        eos_state.xn[n] = fab(i+1,j,k,spec_comp+n); // 
+                    }
+
+                } else if (ndims ==2 ) {
+                    // y is the vertical
+                    lnP2 = log(P(i,j+1,k)); 
+                    for (int n = 0; n < NumSpec; ++n) {
+                        eos_state.xn[n] = fab(i,j+1,k,spec_comp+n);
+                    }
+
+                } else {
+                    // z is the vertical
+                    Real lnP2 = log(P(i,j,k+1));
+                    for (int n = 0; n < NumSpec; ++n) {
+                        eos_state.xn[n] = fab(i,j,k+1,spec_comp+n);
+                    }
+                }
+
+                eos(eos_input_rt, eos_state); // re-evaluate EOS
+                Real lnP1_alt = eos_state.p; // pressure at this grid point with composition of the next
+                Real B = -1 / chi_T * (lnP1_alt - lnP1) / (lnP2 - lnP1); // chi_T still has the old (correct) value
+                ga(i,j,k,2) = ga(i,j,k,1) + B;
 
             });
         }
