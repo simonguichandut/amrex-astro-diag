@@ -267,14 +267,14 @@ void main_main()
 
                     lnP_plus = std::log(P(i+1,j,k));
                     for (int n = 0; n < NumSpec; ++n) {
-                        eos_state.xn[n] = X(i+1,j,k,n); //
+                        eos_state.xn[n] = X(i+1,j,k,n);
                     }
                     eos(eos_input_rt, eos_state);
                     lnPalt_plus = std::log(eos_state.p);
 
                     lnP_minus = std::log(P(i-1,j,k));
                     for (int n = 0; n < NumSpec; ++n) {
-                        eos_state.xn[n] = X(i-1,j,k,n); //
+                        eos_state.xn[n] = X(i-1,j,k,n);
                     }
                     eos(eos_input_rt, eos_state);
                     lnPalt_minus = std::log(eos_state.p);
@@ -284,14 +284,14 @@ void main_main()
 
                     lnP_plus = std::log(P(i,j+1,k));
                     for (int n = 0; n < NumSpec; ++n) {
-                        eos_state.xn[n] = X(i,j+1,k,n); //
+                        eos_state.xn[n] = X(i,j+1,k,n);
                     }
                     eos(eos_input_rt, eos_state);
                     lnPalt_plus = std::log(eos_state.p);
 
                     lnP_minus = std::log(P(i,j-1,k));
                     for (int n = 0; n < NumSpec; ++n) {
-                        eos_state.xn[n] = X(i,j-1,k,n); //
+                        eos_state.xn[n] = X(i,j-1,k,n);
                     }
                     eos(eos_input_rt, eos_state);
                     lnPalt_minus = std::log(eos_state.p);
@@ -301,14 +301,14 @@ void main_main()
 
                     lnP_plus = std::log(P(i,j,k+1));
                     for (int n = 0; n < NumSpec; ++n) {
-                        eos_state.xn[n] = X(i,j,k+1,n); //
+                        eos_state.xn[n] = X(i,j,k+1,n);
                     }
                     eos(eos_input_rt, eos_state);
                     lnPalt_plus = std::log(eos_state.p);
 
                     lnP_minus = std::log(P(i,j,k-1));
                     for (int n = 0; n < NumSpec; ++n) {
-                        eos_state.xn[n] = X(i,j,k-1,n); //
+                        eos_state.xn[n] = X(i,j,k-1,n);
                     }
                     eos(eos_input_rt, eos_state);
                     lnPalt_minus = std::log(eos_state.p);
