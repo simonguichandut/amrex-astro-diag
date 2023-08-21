@@ -27,6 +27,12 @@ void main_main()
 
     std::string pltfile(diag_rp::plotfile);
 
+    if (pltfile.empty()) {
+        std::cout << "no plotfile specified" << std::endl;
+        std::cout << "use: diag.plotfile=plt00000 (for example)" << std::endl;
+        amrex::Error("no plotfile");
+    }
+
     if (pltfile.back() == '/') {
         pltfile.pop_back();
     }

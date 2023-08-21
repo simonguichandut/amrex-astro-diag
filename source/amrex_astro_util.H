@@ -217,6 +217,8 @@ get_spec_index(const std::vector<std::string>& var_names_pf) {
         if (current_spec_name != var_names_pf[spec_comp+n]) {
             std::cout << current_spec_name << std::endl;
             std::cout << var_names_pf[spec_comp+n] << std::endl;
+            std::cout << "Make sure to compile with the same network as the plotfile" << std::endl;
+            std::cout << "    make NETWORK_DIR=aprox13   (for example)" << std::endl;
             amrex::Error("Error: species don't match");
         }
     }
