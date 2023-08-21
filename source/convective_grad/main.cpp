@@ -65,6 +65,7 @@ void main_main()
     Vector<std::string> gvarnames;
     gvarnames.push_back("del");
     gvarnames.push_back("del_ad");
+    gvarnames.push_back("del_ledoux");
 
     // interpret the boundary conditions
 
@@ -105,9 +106,11 @@ void main_main()
             (vargeom, bcr, GpuBndryFuncFab<FabFillNoOp>(FabFillNoOp{}));
 
         // fill the pressure and temperature mfs with ghost cells
+        // we also need all of the species
 
         MultiFab temp_mf(pf.boxArray(ilev), pf.DistributionMap(ilev), 1, ng);
         MultiFab pres_mf(pf.boxArray(ilev), pf.DistributionMap(ilev), 1, ng);
+        MultiFab species_mf(pf.boxArray(ilev), pf.DistributionMap(ilev), NumSpec, ng);
 
         if (ilev == 0) {
 
@@ -123,6 +126,15 @@ void main_main()
                 MultiFab smf = pf.get(ilev, var_names_pf[pres_comp]);
                 FillPatchSingleLevel(pres_mf, ng, Real(0.0), {&smf}, {Real(0.0)},
                                      0, 0, 1, vargeom, physbcf, 0);
+            }
+
+            // species
+            {
+                for (int n = 0; n < NumSpec; ++n) {
+                    MultiFab smf = pf.get(ilev, var_names_pf[spec_comp+n]);
+                    FillPatchSingleLevel(species_mf, ng, Real(0.0), {&smf}, {Real(0.0)},
+                                         0, n, 1, vargeom, physbcf, 0);
+                }
             }
 
         } else {
@@ -154,6 +166,17 @@ void main_main()
                 FillPatchTwoLevels(pres_mf, ng, Real(0.0), {&cmf}, {Real(0.0)},
                                    {&fmf}, {Real(0.0)}, 0, 0, 1, cgeom, vargeom,
                                    cphysbcf, 0, physbcf, 0, ratio, mapper, bcr, 0);
+            }
+
+            // species
+            {
+                for (int n = 0; n < NumSpec; ++n) {
+                    MultiFab cmf = pf.get(ilev-1, var_names_pf[spec_comp+n]);
+                    MultiFab fmf = pf.get(ilev  , var_names_pf[spec_comp+n]);
+                    FillPatchTwoLevels(species_mf, ng, Real(0.0), {&cmf}, {Real(0.0)},
+                                       {&fmf}, {Real(0.0)}, 0, n, 1, cgeom, vargeom,
+                                       cphysbcf, 0, physbcf, 0, ratio, mapper, bcr, 0);
+                }
             }
 
         }
