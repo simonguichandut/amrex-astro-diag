@@ -13,7 +13,7 @@ $$\nabla_{\rm ad}=\left(\frac{d\ln T}{d\ln P}\right)_S=\frac{\chi_T}{\Gamma_1c_V
 $$\nabla_{\rm L}=\nabla_{\rm ad}+B$$
 For the composition term $B$, we use MESA's formulation (Paxton et al. 2013, Equation 8), but with a centered difference instead. At some grid point $k$ with pressure $P_k=P(\rho_k,T_k,X_k)$:
 $$B_k=-\frac{1}{\chi_T}\frac{\ln P(\rho_k,T_k,X_{k+1})-\ln P(\rho_k,T_k,X_{k-1})}{\ln P_{k+1}-\ln P_{k-1}}$$
-(The numerator terms iare the local pressure evaluated with the composition of the above/below grid points.)
+(The numerator terms are the local pressure evaluated with the composition of the above/below grid points.)
 
 To build, do:
 
