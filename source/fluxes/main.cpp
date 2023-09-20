@@ -57,9 +57,8 @@ void main_main()
         pltfile.pop_back();
     }
 
-    std::string outfile = "convgrad." +
-        std::filesystem::path(pltfile).filename().string();
-
+    std::string outfile = pltfile + "/fluxes";
+    std::cout << outfile << std::endl;
 
     PlotFileData pf(pltfile);
 
