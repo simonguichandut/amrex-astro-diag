@@ -303,101 +303,14 @@ void main_main()
                 //     }
                 // }
 
-                // // now del_ad.  We'll follow HKT Eq. 3.96, 3.97
-
-                // eos_t eos_state;
-
-                // eos_state.rho = fab(i,j,k,dens_comp);
-                // eos_state.T = fab(i,j,k,temp_comp);
-                // for (int n = 0; n < NumSpec; ++n) {
-                //     eos_state.xn[n] = X(i,j,k,n);
-                // }
-                // eos(eos_input_rt, eos_state);
-
-                // Real chi_T = eos_state.dpdT * eos_state.T / eos_state.p;
-
-                // ga(i,j,k,1) = eos_state.p * chi_T / (eos_state.gam1 * eos_state.rho * eos_state.T * eos_state.cv);
-
-
-                // // del_ledoux = del_ad + B, where B is the composition term
-                // // We calculate it like MESA, Paxton+ 2013 Equation 8
-                // // but we do a centered difference
-
-                // Real lnP_plus{0.0};  // pressure "above"
-                // Real lnP_minus{0.0};  // pressure "below"
-
-                // Real lnPalt_plus{0.0};  // pressure with "above" species
-                // Real lnPalt_minus{0.0};  // pressure with "below" species
-
-                // if (ndims == 1) {
-                //     // x is the vertical
-
-                //     lnP_plus = std::log(P(i+1,j,k));
-                //     for (int n = 0; n < NumSpec; ++n) {
-                //         eos_state.xn[n] = X(i+1,j,k,n);
-                //     }
-                //     eos(eos_input_rt, eos_state);
-                //     lnPalt_plus = std::log(eos_state.p);
-
-                //     lnP_minus = std::log(P(i-1,j,k));
-                //     for (int n = 0; n < NumSpec; ++n) {
-                //         eos_state.xn[n] = X(i-1,j,k,n);
-                //     }
-                //     eos(eos_input_rt, eos_state);
-                //     lnPalt_minus = std::log(eos_state.p);
-
-                // } else if (ndims ==2 ) {
-                //     // y is the vertical
-
-                //     lnP_plus = std::log(P(i,j+1,k));
-                //     for (int n = 0; n < NumSpec; ++n) {
-                //         eos_state.xn[n] = X(i,j+1,k,n);
-                //     }
-                //     eos(eos_input_rt, eos_state);
-                //     lnPalt_plus = std::log(eos_state.p);
-
-                //     lnP_minus = std::log(P(i,j-1,k));
-                //     for (int n = 0; n < NumSpec; ++n) {
-                //         eos_state.xn[n] = X(i,j-1,k,n);
-                //     }
-                //     eos(eos_input_rt, eos_state);
-                //     lnPalt_minus = std::log(eos_state.p);
-
-                // } else {
-                //     // z is the vertical
-
-                //     lnP_plus = std::log(P(i,j,k+1));
-                //     for (int n = 0; n < NumSpec; ++n) {
-                //         eos_state.xn[n] = X(i,j,k+1,n);
-                //     }
-                //     eos(eos_input_rt, eos_state);
-                //     lnPalt_plus = std::log(eos_state.p);
-
-                //     lnP_minus = std::log(P(i,j,k-1));
-                //     for (int n = 0; n < NumSpec; ++n) {
-                //         eos_state.xn[n] = X(i,j,k-1,n);
-                //     }
-                //     eos(eos_input_rt, eos_state);
-                //     lnPalt_minus = std::log(eos_state.p);
-                // }
-
-
-                // chi_T still has the old (correct) value for i,j,k
-
-                // Real denom = lnP_plus - lnP_minus;
-                // Real B{0.0};
-                // if (denom != 0.0) {
-                //     B = -1 / chi_T * (lnPalt_plus - lnPalt_minus) / denom;
-                // }
-                // ga(i,j,k,2) = ga(i,j,k,1) + B;
-
+                Real pres = fab(i,j,k,pres_comp);
                 Real rho  = fab(i,j,k,dens_comp);
                 Real temp = fab(i,j,k,temp_comp);
                 Real vy   = fab(i,j,k,vy_comp);
                 Real dT   = fab(i,j,k,dT_comp);
 
+                // Make EOS
                 eos_t eos_state;
-
                 eos_state.rho = rho;
                 eos_state.T = temp;
                 for (int n = 0; n < NumSpec; ++n) {
@@ -405,7 +318,18 @@ void main_main()
                 }
                 eos(eos_input_rt, eos_state);
 
-                ga(i,j,k,0) = rho * eos_state.cp * vy * dT; 
+                // Derive from EOS
+                Real cp = eos_state.cp;
+                Real Q = pres/rho * eos_state.dpdT/eos_state.dpdr;
+
+                // Other
+                Real g = GetVarFromJobInfo(pltfile, "grav_const");
+                Hp = -P/(rho*g) // g is negative
+
+                // Convective heat flux
+                ga(i,j,k,0) = rho * cp * vy * dT; 
+                // mixing-length heat flux
+                ga(i,j,k,1) = rho * cp * temp * pow(vy, 3) / (Q * g * Hp);
 
             });
         }
