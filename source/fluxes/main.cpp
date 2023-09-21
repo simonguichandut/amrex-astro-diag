@@ -92,7 +92,7 @@ void main_main()
 
     Vector<std::string> gvarnames;
     gvarnames.push_back("Fconv");
-    // gvarnames.push_back("Fconv_mlt");
+    gvarnames.push_back("Fconv_mlt");
     // gvarnames.push_back("Frad");
 
     // interpret the boundary conditions
@@ -320,16 +320,18 @@ void main_main()
 
                 // Derive from EOS
                 Real cp = eos_state.cp;
-                Real Q = pres/rho * eos_state.dpdT/eos_state.dpdr;
+                Real Q = temp/rho * eos_state.dpdT/eos_state.dpdr; // dlnd/dlnT = T/d dd/dT = T/d (dP/dT)/(dP/dd) = T/d chi_T/chi_d
 
                 // Other
-                Real g = GetVarFromJobInfo(pltfile, "grav_const");
-                Hp = -P/(rho*g) // g is negative
+                //auto g = GetVarFromJobInfo(pltfile, "grav_const"); // this doesn't work
+                // std::cout << g << std::endl;
+                //Real Hp = -pres/(rho*g) // g is negative
 
                 // Convective heat flux
                 ga(i,j,k,0) = rho * cp * vy * dT; 
                 // mixing-length heat flux
-                ga(i,j,k,1) = rho * cp * temp * pow(vy, 3) / (Q * g * Hp);
+                // ga(i,j,k,1) = rho * cp * temp * pow(vy, 3) / (Q * g * Hp);
+                ga(i,j,k,1) = pow(rho,2) * cp * temp * pow(vy,3) / (Q * pres); // doesnt require g
 
             });
         }
