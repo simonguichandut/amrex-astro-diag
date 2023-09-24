@@ -27,6 +27,12 @@ void main_main()
 
     std::string pltfile(diag_rp::plotfile);
 
+    if (pltfile.empty()) {
+        std::cout << "no plotfile specified" << std::endl;
+        std::cout << "use: diag.plotfile=plt00000 (for example)" << std::endl;
+        amrex::Error("no plotfile");
+    }
+
     if (pltfile.back() == '/') {
         pltfile.pop_back();
     }
@@ -65,6 +71,7 @@ void main_main()
     Vector<std::string> gvarnames;
     gvarnames.push_back("del");
     gvarnames.push_back("del_ad");
+    gvarnames.push_back("del_ledoux");
 
     // interpret the boundary conditions
 
@@ -105,9 +112,11 @@ void main_main()
             (vargeom, bcr, GpuBndryFuncFab<FabFillNoOp>(FabFillNoOp{}));
 
         // fill the pressure and temperature mfs with ghost cells
+        // we also need all of the species
 
         MultiFab temp_mf(pf.boxArray(ilev), pf.DistributionMap(ilev), 1, ng);
         MultiFab pres_mf(pf.boxArray(ilev), pf.DistributionMap(ilev), 1, ng);
+        MultiFab species_mf(pf.boxArray(ilev), pf.DistributionMap(ilev), NumSpec, ng);
 
         if (ilev == 0) {
 
@@ -123,6 +132,15 @@ void main_main()
                 MultiFab smf = pf.get(ilev, var_names_pf[pres_comp]);
                 FillPatchSingleLevel(pres_mf, ng, Real(0.0), {&smf}, {Real(0.0)},
                                      0, 0, 1, vargeom, physbcf, 0);
+            }
+
+            // species
+            {
+                for (int n = 0; n < NumSpec; ++n) {
+                    MultiFab smf = pf.get(ilev, var_names_pf[spec_comp+n]);
+                    FillPatchSingleLevel(species_mf, ng, Real(0.0), {&smf}, {Real(0.0)},
+                                         0, n, 1, vargeom, physbcf, 0);
+                }
             }
 
         } else {
@@ -156,6 +174,17 @@ void main_main()
                                    cphysbcf, 0, physbcf, 0, ratio, mapper, bcr, 0);
             }
 
+            // species
+            {
+                for (int n = 0; n < NumSpec; ++n) {
+                    MultiFab cmf = pf.get(ilev-1, var_names_pf[spec_comp+n]);
+                    MultiFab fmf = pf.get(ilev  , var_names_pf[spec_comp+n]);
+                    FillPatchTwoLevels(species_mf, ng, Real(0.0), {&cmf}, {Real(0.0)},
+                                       {&fmf}, {Real(0.0)}, 0, n, 1, cgeom, vargeom,
+                                       cphysbcf, 0, physbcf, 0, ratio, mapper, bcr, 0);
+                }
+            }
+
         }
 
         auto const& dx = pf.cellSize(ilev);
@@ -174,6 +203,7 @@ void main_main()
             // temperature and pressure with ghost cells
             auto const& T = temp_mf.const_array(mfi);
             auto const& P = pres_mf.const_array(mfi);
+            auto const& X = species_mf.const_array(mfi);
 
             // all of the data without ghost cells
             const auto& fab = lev_data_mf.array(mfi);
@@ -219,7 +249,7 @@ void main_main()
                 eos_state.rho = fab(i,j,k,dens_comp);
                 eos_state.T = fab(i,j,k,temp_comp);
                 for (int n = 0; n < NumSpec; ++n) {
-                    eos_state.xn[n] = fab(i,j,k,spec_comp+n);
+                    eos_state.xn[n] = X(i,j,k,n);
                 }
                 eos(eos_input_rt, eos_state);
 
@@ -227,6 +257,78 @@ void main_main()
 
                 ga(i,j,k,1) = eos_state.p * chi_T / (eos_state.gam1 * eos_state.rho * eos_state.T * eos_state.cv);
 
+
+                // del_ledoux = del_ad + B, where B is the composition term
+                // We calculate it like MESA, Paxton+ 2013 Equation 8
+                // but we do a centered difference
+
+                Real lnP_plus{0.0};  // pressure "above"
+                Real lnP_minus{0.0};  // pressure "below"
+
+                Real lnPalt_plus{0.0};  // pressure with "above" species
+                Real lnPalt_minus{0.0};  // pressure with "below" species
+
+                if (ndims == 1) {
+                    // x is the vertical
+
+                    lnP_plus = std::log(P(i+1,j,k));
+                    for (int n = 0; n < NumSpec; ++n) {
+                        eos_state.xn[n] = X(i+1,j,k,n);
+                    }
+                    eos(eos_input_rt, eos_state);
+                    lnPalt_plus = std::log(eos_state.p);
+
+                    lnP_minus = std::log(P(i-1,j,k));
+                    for (int n = 0; n < NumSpec; ++n) {
+                        eos_state.xn[n] = X(i-1,j,k,n);
+                    }
+                    eos(eos_input_rt, eos_state);
+                    lnPalt_minus = std::log(eos_state.p);
+
+                } else if (ndims ==2 ) {
+                    // y is the vertical
+
+                    lnP_plus = std::log(P(i,j+1,k));
+                    for (int n = 0; n < NumSpec; ++n) {
+                        eos_state.xn[n] = X(i,j+1,k,n);
+                    }
+                    eos(eos_input_rt, eos_state);
+                    lnPalt_plus = std::log(eos_state.p);
+
+                    lnP_minus = std::log(P(i,j-1,k));
+                    for (int n = 0; n < NumSpec; ++n) {
+                        eos_state.xn[n] = X(i,j-1,k,n);
+                    }
+                    eos(eos_input_rt, eos_state);
+                    lnPalt_minus = std::log(eos_state.p);
+
+                } else {
+                    // z is the vertical
+
+                    lnP_plus = std::log(P(i,j,k+1));
+                    for (int n = 0; n < NumSpec; ++n) {
+                        eos_state.xn[n] = X(i,j,k+1,n);
+                    }
+                    eos(eos_input_rt, eos_state);
+                    lnPalt_plus = std::log(eos_state.p);
+
+                    lnP_minus = std::log(P(i,j,k-1));
+                    for (int n = 0; n < NumSpec; ++n) {
+                        eos_state.xn[n] = X(i,j,k-1,n);
+                    }
+                    eos(eos_input_rt, eos_state);
+                    lnPalt_minus = std::log(eos_state.p);
+                }
+
+
+                // chi_T still has the old (correct) value for i,j,k
+
+                Real denom = lnP_plus - lnP_minus;
+                Real B{0.0};
+                if (denom != 0.0) {
+                    B = -1 / chi_T * (lnPalt_plus - lnPalt_minus) / denom;
+                }
+                ga(i,j,k,2) = ga(i,j,k,1) + B;
 
             });
         }
