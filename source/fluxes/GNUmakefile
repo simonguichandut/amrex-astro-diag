@@ -23,9 +23,12 @@ EBASE := fluxes
 
 # EOS and network
 EOS_DIR := helmholtz
-
 NETWORK_DIR := aprox13
-#NETWORK_INPUTS := triple_alpha_plus_o.net
+
+# Conductivity
+CONDUCTIVITY_HOME  = $(MICROPHYSICS_HOME)/conductivity
+USE_CONDUCTIVITY := TRUE
+CONDUCTIVITY_DIR := stellar
 
 Bpack := ./Make.package
 Blocs := . ..

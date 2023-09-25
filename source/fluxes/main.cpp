@@ -16,6 +16,9 @@
 
 #include <network.H>
 #include <eos.H>
+#include <conductivity.H>
+
+#include <fundamental_constants.H>
 
 #include <amrex_astro_util.H>
 
@@ -27,6 +30,16 @@ get_vy_index(const std::vector<std::string>& var_names_pf) {
     auto idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), "vely");
     if (idx == var_names_pf.cend()) {
         amrex::Error("Error: could not find vely component");
+    }
+    return std::distance(var_names_pf.cbegin(), idx);
+}
+
+inline int
+get_vz_index(const std::vector<std::string>& var_names_pf) {
+
+    auto idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), "velz");
+    if (idx == var_names_pf.cend()) {
+        amrex::Error("Error: could not find velz component");
     }
     return std::distance(var_names_pf.cbegin(), idx);
 }
@@ -73,7 +86,7 @@ void main_main()
     // find variable indices
     // We want: 
     // density, temperature, pressure, species
-    // velocity, temperature perturbation
+    // vertical velocity, temperature perturbation
     // we will assume here that the species are contiguous, so we will find
     // the index of the first species
 
@@ -83,9 +96,13 @@ void main_main()
     int temp_comp = get_temp_index(var_names_pf);
     int pres_comp = get_pres_index(var_names_pf);
     int spec_comp = get_spec_index(var_names_pf);
-    int vy_comp = get_vy_index(var_names_pf);
     int dT_comp = get_dT_index(var_names_pf);
 
+    int v_comp = get_vy_index(var_names_pf);
+    if (ndims == 3) {
+        // z is the vertical
+        int v_comp = get_vz_index(var_names_pf);
+    }
 
     // create the variable names we will derive and store in the output
     // file
@@ -93,7 +110,9 @@ void main_main()
     Vector<std::string> gvarnames;
     gvarnames.push_back("Fconv");
     gvarnames.push_back("Fconv_mlt");
-    // gvarnames.push_back("Frad");
+    gvarnames.push_back("Fkin");
+    gvarnames.push_back("Frad");
+    gvarnames.push_back("Fh1");
 
     // interpret the boundary conditions
 
@@ -167,9 +186,9 @@ void main_main()
                 }
             }
 
-            // vy
+            // vertical velocity
             {
-                MultiFab smf = pf.get(ilev, var_names_pf[vy_comp]);
+                MultiFab smf = pf.get(ilev, var_names_pf[v_comp]);
                 FillPatchSingleLevel(vy_mf, ng, Real(0.0), {&smf}, {Real(0.0)},
                                      0, 0, 1, vargeom, physbcf, 0);
             }
@@ -225,10 +244,10 @@ void main_main()
                 }
             }
 
-            // vy
+            // v
             {
-                MultiFab cmf = pf.get(ilev-1, var_names_pf[vy_comp]);
-                MultiFab fmf = pf.get(ilev  , var_names_pf[vy_comp]);
+                MultiFab cmf = pf.get(ilev-1, var_names_pf[v_comp]);
+                MultiFab fmf = pf.get(ilev  , var_names_pf[v_comp]);
                 FillPatchTwoLevels(vy_mf, ng, Real(0.0), {&cmf}, {Real(0.0)},
                                    {&fmf}, {Real(0.0)}, 0, 0, 1, cgeom, vargeom,
                                    cphysbcf, 0, physbcf, 0, ratio, mapper, bcr, 0);
@@ -259,12 +278,8 @@ void main_main()
             // output storage
             auto const& ga = gmf[ilev].array(mfi);
 
-            // temperature and pressure with ghost cells
+            // temperature with ghost cells
             auto const& T = temp_mf.const_array(mfi);
-            auto const& P = pres_mf.const_array(mfi);
-            auto const& X = species_mf.const_array(mfi);
-            auto const& vy = vy_mf.const_array(mfi);
-            auto const& dT = dT_mf.const_array(mfi);
 
             // all of the data without ghost cells
             const auto& fab = lev_data_mf.array(mfi);
@@ -272,51 +287,32 @@ void main_main()
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
 
-                // first dlog T / dlog P actual -- we assume that the last
-                // dimension is the vertical (plane-parallel)
+                Real dT_dr = 0.0;
+                if ( ndims == 2 ) {
+                    // y is the vertical
+                    dT_dr = (T(i,j+1,k) - T(i,j-1,k)) / (2.0*dx[1]);
+                } else {
+                    // z is the vertical
+                    dT_dr = (T(i,j,k+1) - T(i,j-1,k-1)) / (2.0*dx[2]);
+                }
 
-                // if (ndims == 1) {
-                //     // x is the vertical
-                //     Real dp = P(i+1,j,k) - P(i-1,j,k);
-                //     if (dp != 0.0) {
-                //         ga(i,j,k,0) = (T(i+1,j,k) - T(i-1,j,k)) / dp * (P(i,j,k) / T(i,j,k));
-                //     } else {
-                //         ga(i,j,k,0) = 0.0;
-                //     }
-
-                // } else if (ndims == 2) {
-                //     // y is the vertical
-                //     Real dp = P(i,j+1,k) - P(i,j-1,k);
-                //     if (dp != 0.0) {
-                //         ga(i,j,k,0) = (T(i,j+1,k) - T(i,j-1,k)) / dp * (P(i,j,k) / T(i,j,k));
-                //     } else {
-                //         ga(i,j,k,0) = 0.0;
-                //     }
-
-                // } else {
-                //     // z is the vertical
-                //     Real dp = P(i,j,k+1) - P(i,j,k-1);
-                //     if (dp != 0.0) {
-                //         ga(i,j,k,0) = (T(i,j,k+1) - T(i,j,k-1)) / dp * (P(i,j,k) / T(i,j,k));
-                //     } else {
-                //         ga(i,j,k,0) = 0.0;
-                //     }
-                // }
 
                 Real pres = fab(i,j,k,pres_comp);
                 Real rho  = fab(i,j,k,dens_comp);
                 Real temp = fab(i,j,k,temp_comp);
-                Real vy   = fab(i,j,k,vy_comp);
-                Real dT   = fab(i,j,k,dT_comp);
+                Real vel   = fab(i,j,k,v_comp);
+                Real delT   = fab(i,j,k,dT_comp);
 
                 // Make EOS
                 eos_t eos_state;
                 eos_state.rho = rho;
                 eos_state.T = temp;
                 for (int n = 0; n < NumSpec; ++n) {
-                    eos_state.xn[n] = X(i,j,k,n);
+                    eos_state.xn[n] = fab(i,j,k,spec_comp+n);
                 }
                 eos(eos_input_rt, eos_state);
+
+                conductivity(eos_state);
 
                 // Derive from EOS
                 Real cp = eos_state.cp;
@@ -328,10 +324,22 @@ void main_main()
                 //Real Hp = -pres/(rho*g) // g is negative
 
                 // Convective heat flux
-                ga(i,j,k,0) = rho * cp * vy * dT; 
-                // mixing-length heat flux
+                ga(i,j,k,0) = rho * cp * vel * delT; 
+
+                // Mixing-length heat flux
                 // ga(i,j,k,1) = rho * cp * temp * pow(vy, 3) / (Q * g * Hp);
-                ga(i,j,k,1) = pow(rho,2) * cp * temp * pow(vy,3) / (Q * pres); // doesnt require g
+                ga(i,j,k,1) = pow(rho,2) * cp * temp * pow(vel,3) / (Q * pres); // doesnt require g
+
+                // Kinetic flux
+                ga(i,j,k,2) = rho * pow(vel,3);
+
+                // Radiative flux 
+                // conductivity is k = 4*a*c*T^3/(kap*rho)
+                // see Microphysics/conductivity/stellar/actual_conductivity.H
+                ga(i,j,k,3) = -eos_state.conductivity * dT_dr;
+
+                // Hydrogen flux
+                ga(i,j,k,4) = rho * vel * X(i,j,k,0); // this is rho*v*X, not rho*v*dX
 
             });
         }
