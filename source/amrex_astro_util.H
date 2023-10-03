@@ -21,7 +21,7 @@ using namespace amrex;
 inline
 std::string GetVarFromJobInfo (const std::string pltfile, const std::string varname) {
     std::string filename = pltfile + "/job_info";
-    std::regex re("(?:[ \\t]*)" + varname + "\\s*:\\s*(.*)\\s*\\n");
+    std::regex re("\\s*" + varname + "\\s*=\\s*([\\w\\d\\.\\-\\+]+)");
 
     std::smatch m;
 
