@@ -319,7 +319,8 @@ void main_main()
                 Real Q = temp/rho * eos_state.dpdT/eos_state.dpdr; // dlnd/dlnT = T/d dd/dT = T/d (dP/dT)/(dP/dd) = T/d chi_T/chi_d
 
                 // Other
-                //auto g = GetVarFromJobInfo(pltfile, "grav_const"); // this doesn't work
+                // auto grav = GetVarFromJobInfo(pltfile, "maestro.grav_const"); // really slow!!
+                // Real g = std::stod(grav);
                 // std::cout << g << std::endl;
                 //Real Hp = -pres/(rho*g) // g is negative
 
@@ -327,8 +328,9 @@ void main_main()
                 ga(i,j,k,0) = rho * cp * vel * delT; 
 
                 // Mixing-length heat flux
-                // ga(i,j,k,1) = rho * cp * temp * pow(vy, 3) / (Q * g * Hp);
-                ga(i,j,k,1) = pow(rho,2) * cp * temp * pow(vel,3) / (Q * pres); // doesnt require g
+                // ga(i,j,k,1) = rho * cp * temp * pow(vel, 3) / (Q * g * Hp);
+                //ga(i,j,k,1) = pow(rho,2) * cp * temp * pow(vel,3) / (Q * pres); // doesnt require g
+                ga(i,j,k,1) = pow(rho,2) * cp * temp * pow(std::abs(vel), 3) / (Q * pres); // using absolute value of velocity
 
                 // Kinetic flux
                 ga(i,j,k,2) = rho * pow(vel,3);
@@ -339,7 +341,7 @@ void main_main()
                 ga(i,j,k,3) = -eos_state.conductivity * dT_dr;
 
                 // Hydrogen flux
-                ga(i,j,k,4) = rho * vel * X(i,j,k,0); // this is rho*v*X, not rho*v*dX
+                ga(i,j,k,4) = rho * vel * fab(i,j,k,spec_comp+0); // this is rho*v*X, not rho*v*dX
 
             });
         }
