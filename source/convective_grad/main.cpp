@@ -64,7 +64,6 @@ void main_main()
     int temp_comp = get_temp_index(var_names_pf);
     int pres_comp = get_pres_index(var_names_pf);
     int spec_comp = get_spec_index(var_names_pf);
-
     // create the variable names we will derive and store in the output
     // file
 
@@ -91,15 +90,17 @@ void main_main()
     }
 
     // get center if spherical
-    if (diag_rp::spherical){
 
-        Array<Real, AMREX_SPACEDIM> center;
-        auto const probLo = pf.probLo();
-        auto const probHi = pf.probHi();
-        for (idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            center[idim] = (probHi[idim] - probLo[idim]) / 2;
+    Array<Real, AMREX_SPACEDIM> center;
+    auto const probLo = pf.probLo();
+    auto const probHi = pf.probHi();
+
+    if (diag_rp::spherical){
+        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
+            center[idim] = 0.5_rt * (probHi[idim] - probLo[idim]);
         }
     }
+
     // we need both T and P constructed with ghost cells
 
     Vector<MultiFab> gmf(nlevs);
@@ -177,8 +178,8 @@ void main_main()
 
             // pressure
             {
-                MultiFab cmf = pf.get(ilev-1, var_names_pf[temp_comp]);
-                MultiFab fmf = pf.get(ilev  , var_names_pf[temp_comp]);
+                MultiFab cmf = pf.get(ilev-1, var_names_pf[pres_comp]);
+                MultiFab fmf = pf.get(ilev  , var_names_pf[pres_comp]);
                 FillPatchTwoLevels(pres_mf, ng, Real(0.0), {&cmf}, {Real(0.0)},
                                    {&fmf}, {Real(0.0)}, 0, 0, 1, cgeom, vargeom,
                                    cphysbcf, 0, physbcf, 0, ratio, mapper, bcr, 0);
@@ -221,9 +222,13 @@ void main_main()
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
 
-                Real xpos = probLo[0] + dx[0] * i - center[0];
-                Real ypos = probLo[1] + dx[1] * j - center[1];
-                Real zpos = probLo[2] + dx[2] * k - center[2];
+                // calc position if spherical
+                Real xpos, ypos, zpos;
+                if (diag_rp::spherical){
+                    xpos = probLo[0] + dx[0] * i - center[0];
+                    ypos = probLo[1] + dx[1] * j - center[1];
+                    zpos = probLo[2] + dx[2] * k - center[2];
+                }
 
                 // first dlog T / dlog P actual -- we assume that the last
                 // dimension is the vertical (plane-parallel)
@@ -287,14 +292,15 @@ void main_main()
                        // r is from x, y, and z
                         Real dp = (xpos / dx[0]) * (P(i+1,j,k) - P(i-1,j,k))
                                 + (ypos / dx[1]) * (P(i,j+1,k) - P(i,j-1,k))
-                                + (zpos / dx[2]) * (P(i,j,k+1) - P(i,j,k+1)); 
+                                + (zpos / dx[2]) * (P(i,j,k+1) - P(i,j,k-1)); 
 
                         if (dp != 0.0) {
                             Real dT = (xpos / dx[0]) * (T(i+1,j,k) - T(i-1,j,k))
                                     + (ypos / dx[1]) * (T(i,j+1,k) - T(i,j-1,k))
-                                    + (zpos / dx[2]) * (T(i,j,k+1) - T(i,j,k+1)); 
+                                    + (zpos / dx[2]) * (T(i,j,k+1) - T(i,j,k-1)); 
 
                             ga(i,j,k,0) = (dT / dp) * (P(i,j,k) / T(i,j,k));
+
                         } else {
                             ga(i,j,k,0) = 0.0;
                         }
@@ -431,7 +437,7 @@ void main_main()
                             eos_state.xn[n] = X(i-1,j,k,n);
                         }
                         eos(eos_input_rt, eos_state);
-                        lnPalt_plus += (xpos / dx[0]) * std::log(eos_state.p);
+                        lnPalt_minus += (xpos / dx[0]) * std::log(eos_state.p);
 
                         //minus - y
                         for (int n = 0; n < NumSpec; ++n) {
@@ -479,7 +485,7 @@ void main_main()
                             eos_state.xn[n] = X(i-1,j,k,n);
                         }
                         eos(eos_input_rt, eos_state);
-                        lnPalt_plus += (xpos / dx[0]) * std::log(eos_state.p);
+                        lnPalt_minus += (xpos / dx[0]) * std::log(eos_state.p);
 
                         //minus - y
                         for (int n = 0; n < NumSpec; ++n) {
