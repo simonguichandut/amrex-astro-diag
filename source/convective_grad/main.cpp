@@ -167,8 +167,8 @@ void main_main()
 
             // pressure
             {
-                MultiFab cmf = pf.get(ilev-1, var_names_pf[temp_comp]);
-                MultiFab fmf = pf.get(ilev  , var_names_pf[temp_comp]);
+                MultiFab cmf = pf.get(ilev-1, var_names_pf[pres_comp]);
+                MultiFab fmf = pf.get(ilev  , var_names_pf[pres_comp]);
                 FillPatchTwoLevels(pres_mf, ng, Real(0.0), {&cmf}, {Real(0.0)},
                                    {&fmf}, {Real(0.0)}, 0, 0, 1, cgeom, vargeom,
                                    cphysbcf, 0, physbcf, 0, ratio, mapper, bcr, 0);
