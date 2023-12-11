@@ -225,9 +225,9 @@ void main_main()
                 // calc position if spherical
                 Real xpos, ypos, zpos;
                 if (diag_rp::spherical){
-                    xpos = probLo[0] + dx[0] * i - center[0];
-                    ypos = probLo[1] + dx[1] * j - center[1];
-                    zpos = probLo[2] + dx[2] * k - center[2];
+                    xpos = probLo[0] + dx[0] * (Real(i) + 0.5_rt) - center[0];
+                    ypos = probLo[1] + dx[1] * (Real(j) + 0.5_rt) - center[1];
+                    zpos = probLo[2] + dx[2] * (Real(k) + 0.5_rt) - center[2];
                 }
 
                 // first dlog T / dlog P actual -- we assume that the last
