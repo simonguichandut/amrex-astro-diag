@@ -5,4 +5,4 @@ small_dens     real         -1.e200
 
 plotfile       string       ""
 
-spherical 	   bool         false
+spherical 	   int          0
