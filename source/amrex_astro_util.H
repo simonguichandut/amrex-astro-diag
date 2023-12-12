@@ -186,7 +186,7 @@ get_pres_index(const std::vector<std::string>& var_names_pf) {
     auto idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), "pressure");
     if (idx == var_names_pf.cend()) {
         // for MAESTROeX, we'll default to "p0"
-        idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), "p0");
+        idx = std::find(var_names_pf.cbegin(), var_names_pf.cend(), "p0pluspi");
         if (idx == var_names_pf.cend()) {
             amrex::Error("Error: could not find the pressure component");
         }
