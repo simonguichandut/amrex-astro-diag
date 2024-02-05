@@ -110,6 +110,7 @@ void main_main()
     Vector<std::string> gvarnames;
     gvarnames.push_back("Fconv");
     gvarnames.push_back("Fconv_mlt");
+    gvarnames.push_back("Fconv_mlt_v");
     gvarnames.push_back("Fkin");
     gvarnames.push_back("Frad");
     gvarnames.push_back("Fh1");
@@ -278,8 +279,9 @@ void main_main()
             // output storage
             auto const& ga = gmf[ilev].array(mfi);
 
-            // temperature with ghost cells
+            // temperature and pressure with ghost cells
             auto const& T = temp_mf.const_array(mfi);
+            auto const& P = pres_mf.const_array(mfi);
 
             // all of the data without ghost cells
             const auto& fab = lev_data_mf.array(mfi);
@@ -288,12 +290,22 @@ void main_main()
             {
 
                 Real dT_dr = 0.0;
+                Real del = 0.0;
                 if ( ndims == 2 ) {
                     // y is the vertical
                     dT_dr = (T(i,j+1,k) - T(i,j-1,k)) / (2.0*dx[1]);
+                    Real dp = P(i,j+1,k) - P(i,j-1,k);
+                    if (dp != 0.0) {
+                        del = (T(i,j+1,k) - T(i,j-1,k)) / dp * (P(i,j,k) / T(i,j,k));
+                    }
+
                 } else {
                     // z is the vertical
                     dT_dr = (T(i,j,k+1) - T(i,j-1,k-1)) / (2.0*dx[2]);
+                    Real dp = P(i,j,k+1) - P(i,j,k-1);
+                    if (dp != 0.0) {
+                        del = (T(i,j,k+1) - T(i,j,k-1)) / dp * (P(i,j,k) / T(i,j,k));
+                    }
                 }
 
 
@@ -316,32 +328,39 @@ void main_main()
 
                 // Derive from EOS
                 Real cp = eos_state.cp;
-                Real Q = temp/rho * eos_state.dpdT/eos_state.dpdr; // dlnd/dlnT = T/d dd/dT = T/d (dP/dT)/(dP/dd) = T/d chi_T/chi_d
+                Real chi_T = eos_state.dpdT * temp/pres;
+                Real chi_rho = eos_state.dpdr * rho/pres;
+                Real delta = chi_T/chi_rho; // dlnd/dlnT = T/d dd/dT = T/d (dP/dT)/(dP/dd) = T/d chi_T/chi_d
+                Real del_ad = pres * chi_T / (rho * temp * cp * chi_rho);
 
                 // Other
                 // auto grav = GetVarFromJobInfo(pltfile, "maestro.grav_const"); // really slow!!
-                // Real g = std::stod(grav);
+                // Real g = std::abs(std::stod(grav));
                 // std::cout << g << std::endl;
-                //Real Hp = -pres/(rho*g) // g is negative
+                // Real Hp = pres/(rho*g)
 
                 // Convective heat flux
                 ga(i,j,k,0) = rho * cp * vel * delT; 
 
-                // Mixing-length heat flux
-                // ga(i,j,k,1) = rho * cp * temp * pow(vel, 3) / (Q * g * Hp);
-                //ga(i,j,k,1) = pow(rho,2) * cp * temp * pow(vel,3) / (Q * pres); // doesnt require g
-                ga(i,j,k,1) = pow(rho,2) * cp * temp * pow(std::abs(vel), 3) / (Q * pres); // using absolute value of velocity
+                // MLT heat flux in the efficient regime
+                // ga(i,j,k,1) = rho * cp * temp * std::sqrt(g * delta * Hp) * pow(del-del_ad, 1.5);
+                ga(i,j,k,1) = rho * cp * temp * std::sqrt(delta * pres/rho) * pow(del-del_ad, 1.5); // without using g
+
+                // MLT flux as a function of velocity
+                // ga(i,j,k,1) = rho * cp * temp * pow(vel, 3) / (delta * g * Hp);
+                //ga(i,j,k,1) = pow(rho,2) * cp * temp * pow(vel,3) / (delta * pres); // without using g
+                ga(i,j,k,2) = pow(rho,2) * cp * temp * pow(std::abs(vel), 3) / (delta * pres); // using absolute value of velocity
 
                 // Kinetic flux
-                ga(i,j,k,2) = rho * pow(vel,3);
+                ga(i,j,k,3) = rho * pow(vel,3);
 
                 // Radiative flux 
                 // conductivity is k = 4*a*c*T^3/(kap*rho)
                 // see Microphysics/conductivity/stellar/actual_conductivity.H
-                ga(i,j,k,3) = -eos_state.conductivity * dT_dr;
+                ga(i,j,k,4) = -eos_state.conductivity * dT_dr;
 
                 // Hydrogen flux
-                ga(i,j,k,4) = rho * vel * fab(i,j,k,spec_comp+0); // this is rho*v*X, not rho*v*dX
+                ga(i,j,k,5) = rho * vel * fab(i,j,k,spec_comp+0); // this is rho*v*X, not rho*v*dX
 
             });
         }

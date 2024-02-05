@@ -6,9 +6,13 @@ This tool evaluates the following fluxes:
 $$F_{\rm conv}=\rho c_p v \delta T$$
 This is currently set up to use $\delta T=T-\bar{T}$, which exists as a code variable in MAESTROeX.
 
-- The *mixing-length theory* convective heat flux
-$$F_{\rm conv,MLT}=\frac{\rho c_pT}{QgH_P}|v|^3$$
-where $Q=\left(\frac{d\ln\rho}{d\ln T}\right)_P=\frac{\chi_T}{\chi_\rho}$ (neglecting composition gradients) comes from the EOS. Also note that it is assumed that the mixing-length $\ell$ is equal to the pressure scale height $H_P=P/\rho g$.
+- The *mixing-length theory* (MLT) convective heat flux
+$$F_{\rm MLT}=\rho c_p\sqrt{g\delta H_p}(\nabla-\nabla_{\rm ad})$$
+where $\delta=\left(\frac{d\ln\rho}{d\ln T}\right)_P=\frac{\chi_T}{\chi_\rho}$ comes from the EOS. This expression assumes efficient convection ($\nabla_{\rm element}\approx\nabla_{\rm ad}$), ignores composition gradients, assumes the mixing length $\ell$ is equal to the pressure scale height $H_p=p/\rho g$, and ignores other order unity parameters from various MLT formulations.
+
+- The MLT flux can also be expressed as a function of the velocity, under the same assumptions as above:
+$$F_{\rm MLT,v}=\frac{\rho c_pT}{\delta gH_p}|v|^3$$
+
 
 - The kinetic energy flux
 $$F_{\rm kin}=\rho v^3$$
